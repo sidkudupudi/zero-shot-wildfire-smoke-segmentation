@@ -1,9 +1,35 @@
-# Zero-Shot Wildfire Scene Understanding (Grounding DINO + SAM → MobileSAM on TensorRT)
+<div align="center">
+
+# Zero-Shot Wildfire Scene Understanding
+### Grounding DINO + SAM → MobileSAM on TensorRT
+
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-ee4c2c.svg)](https://pytorch.org/)
+[![TensorRT](https://img.shields.io/badge/TensorRT-FP32-76B900.svg)](#how-it-works)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![AP50](https://img.shields.io/badge/AP50-0.304-orange.svg)](#results-744-hpwren-images-one-annotated-plume-each)
 
 A foundation-model pipeline for fire-lookout cameras that segments smoke, haze, dry vegetation, power lines and buildings from a **text prompt**, with no task-specific training. The segmentation encoder is re-targeted to the edge by exporting **MobileSAM to TensorRT**. The pipeline is **scored against ground-truth smoke boxes**, so every claim below is measured.
 
-<p align="center"><img src="results/figures/examples/hit_1.jpg" width="80%" alt="Localised smoke plume"></p>
-<sub>Prompt-v2 output (masks and boxes) with the annotated plume in white. Each example below is its own image.</sub>
+</div>
+
+---
+
+## Table of Contents
+- [Demo](#demo)
+- [Results](#results-744-hpwren-images-one-annotated-plume-each)
+- [What the Packaging Review Changed](#what-the-packaging-review-changed)
+- [How It Works](#how-it-works)
+- [Repository Layout](#repository-layout)
+- [Quick Start](#quick-start)
+- [Data & Licenses](#data--licenses)
+
+## Demo
+
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/examples/hit_1.jpg" alt="Localised smoke plume" width="820"/>
+<p><sub>Prompt-v2 output (masks and boxes) with the annotated plume in white. Each example below is its own image.</sub></p>
+</div>
 
 ## Results (744 HPWREN images, one annotated plume each)
 
@@ -14,48 +40,66 @@ A foundation-model pipeline for fire-lookout cameras that segments smoke, haze, 
 | Precision of smoke boxes (IoU ≥ 0.5) | **57.4%** | 24.2% | 47.3% |
 | AP50 | 0.255 | 0.267 | **0.304** |
 
-<p align="center">
-  <img src="results/figures/gt_evaluation.png" width="62%" alt="Evaluation against ground truth">
-  <img src="results/figures/mobile_sam_trt_latency.png" width="36%" alt="MobileSAM TensorRT latency">
-</p>
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/gt_evaluation.png" alt="Evaluation against ground truth" width="760"/>
+</div>
+
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/mobile_sam_trt_latency.png" alt="MobileSAM TensorRT latency" width="760"/>
+</div>
 
 - **Prompt engineering trades precision for recall.** Adding smoke synonyms finds 15 points more plumes, but each synonym boxes the same plume again. A cross-phrase NMS step recovers most of the precision and gives the best AP50.
 - **Failure modes.** Small, distant or faint plumes are missed or swallowed by a whole-sky `haze` box. No plume is mislabelled as another class.
+- **Edge path.** The MobileSAM image encoder runs in **4.31ms** per 1024×1024 frame on TensorRT (mean over 698 runs, p99 4.38ms). The engine is built from the FP32 graph.
 
-<p align="center">
-  <img src="results/figures/examples/hit_2.jpg" width="49%" alt="Localised plume">
-  <img src="results/figures/examples/hit_3.jpg" width="49%" alt="Localised plume">
-</p>
-<p align="center">
-  <img src="results/figures/examples/miss_faint_plume.jpg" width="49%" alt="Missed faint plume">
-  <img src="results/figures/examples/miss_tiny_plume.jpg" width="49%" alt="Missed tiny plume">
-</p>
-<p align="center"><img src="results/figures/examples/wrong_whole_sky_box.jpg" width="49%" alt="Whole-sky smoke box"></p>
+The full walkthrough is in [`wildfire_smoke_zero_shot.ipynb`](wildfire_smoke_zero_shot.ipynb). [`docs/limitations.md`](docs/limitations.md) records the scoping decisions.
 
-- **Edge path.** The MobileSAM image encoder runs in **4.31 ms** per 1024×1024 frame on TensorRT (mean over 698 runs, p99 4.38 ms). The engine is built from the FP32 graph.
+#### Hits
 
-The full walkthrough is in **[wildfire_smoke_zero_shot.ipynb](wildfire_smoke_zero_shot.ipynb)**. [docs/limitations.md](docs/limitations.md) records the scoping decisions.
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/examples/hit_2.jpg" alt="Localised plume" width="700"/>
+<p><sub>Localised plume — prompt v2.</sub></p>
+</div>
 
-## How it works
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/examples/hit_3.jpg" alt="Localised plume" width="700"/>
+<p><sub>Localised plume — prompt v2.</sub></p>
+</div>
 
-```mermaid
-flowchart LR
-    F[lookout-camera frame] --> G[Grounding DINO Swin-T<br/>text prompt → boxes<br/>box 0.25 / text 0.20]
-    G -->|box prompts| S[SAM ViT-H<br/>pixel masks]
-    S --> O[annotated frame + masks<br/>detections.json]
-    O --> E[scoring vs GT boxes<br/>recall · precision · AP50]
-    M[MobileSAM TinyViT encoder] -->|ONNX opset 17| T[TensorRT engine<br/>4.31 ms / frame]
-```
+#### Misses &amp; Failure Modes
 
-## What the packaging review changed
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/examples/miss_faint_plume.jpg" alt="Missed faint plume" width="700"/>
+<p><sub>Missed — faint, distant plume below detection threshold.</sub></p>
+</div>
 
-The original demo video drew a smoke "trajectory" across frames and overlaid "TensorRT: 232 FPS". Neither holds on this dataset:
-- The 744 images come from many cameras and days, so consecutive frames are unrelated.
-- 232 FPS is the MobileSAM encoder alone, while the frames were produced by Grounding DINO + SAM ViT-H in PyTorch.
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/examples/miss_tiny_plume.jpg" alt="Missed tiny plume" width="700"/>
+<p><sub>Missed — plume too small relative to frame.</sub></p>
+</div>
 
-The video is therefore not presented as a result (see notebook section 5). Tracking needs a real HPWREN time-lapse sequence.
+<div align="center">
+<img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/examples/wrong_whole_sky_box.jpg" alt="Whole-sky smoke box" width="700"/>
+<p><sub>Over-segmented — the <code>haze</code> prompt swallows the whole sky instead of isolating the plume.</sub></p>
+</div>
 
-## Repository layout
+## What the Packaging Review Changed
+
+> The original demo video drew a smoke "trajectory" across frames and overlaid "TensorRT: 232 FPS". Neither holds on this dataset:
+>
+> - The 744 images come from many cameras and days, so consecutive frames are unrelated.
+> - 232 FPS is the MobileSAM encoder alone, while the frames were produced by Grounding DINO + SAM ViT-H in PyTorch.
+>
+> The video is therefore not presented as a result (see notebook section 5). Tracking needs a real HPWREN time-lapse sequence.
+
+## How It Works
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/wildfire-pipeline-dark.svg">
+  <img src="https://github.com/sidkudupudi/zero-shot-wildfire-smoke-segmentation/raw/main/results/figures/wildfire-pipeline-light.svg" alt="Zero-shot detection and scoring pipeline, and the independent MobileSAM TensorRT edge export">
+</picture>
+
+## Repository Layout
 
 ```
 wildfire_smoke_zero_shot.ipynb   walkthrough: data, zero-shot pipeline, GT scoring, TensorRT export, lessons learned
@@ -70,7 +114,7 @@ results/metrics/                 detections (v1, v2), GT boxes, summary scores, 
 docs/limitations.md              scoping and measured limitations
 ```
 
-## Quick start
+## Quick Start
 
 ```bash
 pip install -r requirements.txt
@@ -81,8 +125,14 @@ python src/eval_against_gt.py --xmls data/annotated_bounding_box_hpwren/xmls --d
 bash src/export_and_build.sh
 ```
 
-## Data & licenses
+## Data & Licenses
 
 - **Wildfire smoke boxes**: AI For Mankind, built on public-domain HPWREN camera images. Licensed CC BY-NC-SA 4.0. Please credit AI For Mankind and HPWREN. `results/metrics/gt_boxes.csv` contains the 744 box annotations under the same license.
 - **Grounding DINO** (Liu et al., 2023), **Segment Anything** (Kirillov et al., 2023) and **MobileSAM** (Zhang et al., 2023) are used under their Apache-2.0 licenses.
-- Code: MIT (see [LICENSE](LICENSE)).
+- Code: MIT — see [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+<sub>Part of <a href="https://sidkudupudi.github.io">sidkudupudi.github.io</a> — robotics &amp; computer vision portfolio.</sub>
+</div>
