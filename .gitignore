@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Datasets, weights and build artefacts (download / regenerate them, see README)
+data/
+datasets/
+/runs/
+weights/
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.onnx.data
+*.engine
+*.trt
+*.plan
+*.safetensors
+*.bin
+*.npy
+*.npz
+*.pkl
+*.parquet
+*.zip
+*.tar.gz
+build/
+
+# Raw videos (small previews in results/media are tracked explicitly)
+*.mp4
+*.avi
+*.mkv
+!results/media/*.mp4
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# detection outputs (masks, annotated frames) and exported models
+outputs/
+optimize/exported/

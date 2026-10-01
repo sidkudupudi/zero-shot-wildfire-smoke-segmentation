@@ -1,0 +1,15 @@
+# Tested with Python 3.13, PyTorch 2.13 + CUDA, RTX 5080
+torch>=2.8
+torchvision>=0.23
+groundingdino-py>=0.4     # Grounding DINO (Swin-T) zero-shot detector
+segment-anything>=1.0     # SAM ViT-H
+mobile-sam>=1.0           # MobileSAM (TinyViT encoder) for the edge export
+timm>=0.9                 # required by MobileSAM
+transformers>=4.38,<5     # Grounding DINO text encoder (BERT)
+supervision>=0.6          # required by groundingdino.util.inference
+opencv-python>=4.10
+numpy>=2.0
+pandas>=2.2
+matplotlib>=3.9
+onnx>=1.17
+# TensorRT (trtexec) comes from the NVIDIA packages. Checkpoints: groundingdino_swint_ogc.pth, sam_vit_h_4b8939.pth, mobile_sam.pt -> checkpoints/
